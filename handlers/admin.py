@@ -238,7 +238,6 @@ async def show_filtered_reviews(callback_query: types.CallbackQuery):
     # Обрабатываем отправку сообщения с фото или без
     if review.photo_id:
         try:
-            # Если текущее сообщение можно отредактировать
             await bot.edit_message_media(
                 chat_id=callback_query.message.chat.id,
                 message_id=callback_query.message.message_id,
@@ -249,7 +248,6 @@ async def show_filtered_reviews(callback_query: types.CallbackQuery):
                 reply_markup=keyboard
             )
         except Exception:
-            # Если не удалось отредактировать
             await callback_query.message.delete()
             await bot.send_photo(
                 chat_id=callback_query.message.chat.id,
@@ -258,8 +256,16 @@ async def show_filtered_reviews(callback_query: types.CallbackQuery):
                 reply_markup=keyboard
             )
     else:
-        # Если фото нет, просто отправляем текст
-        await callback_query.message.edit_text(review_text, reply_markup=keyboard)
+        try:
+            await callback_query.message.edit_text(review_text, reply_markup=keyboard)
+        except Exception:
+            # Если не удалось (например, предыдущее было с фото), удаляем и отправляем новое
+            await callback_query.message.delete()
+            await bot.send_message(
+                chat_id=callback_query.message.chat.id,
+                text=review_text,
+                reply_markup=keyboard
+            )
     
     session.close()
 
@@ -348,7 +354,16 @@ async def navigate_filtered_reviews(callback_query: types.CallbackQuery):
                 reply_markup=keyboard
             )
     else:
-        await callback_query.message.edit_text(review_text, reply_markup=keyboard)
+        try:
+            await callback_query.message.edit_text(review_text, reply_markup=keyboard)
+        except Exception:
+            # Если не удалось (например, предыдущее было с фото), удаляем и отправляем новое
+            await callback_query.message.delete()
+            await bot.send_message(
+                chat_id=callback_query.message.chat.id,
+                text=review_text,
+                reply_markup=keyboard
+            )
     
     session.close()
 
@@ -504,7 +519,7 @@ async def send_review(message: types.Message, reviews, index):
                 reply_markup=keyboard
             )
         except Exception:
-            # Если не удалось отредактировать (например, если предыдущее сообщение было без фото)
+            # Если не удалось отредактировать, удаляем старое и отправляем новое
             await message.delete()
             await bot.send_photo(
                 chat_id=message.chat.id,
@@ -513,8 +528,17 @@ async def send_review(message: types.Message, reviews, index):
                 reply_markup=keyboard
             )
     else:
-        # Если фото нет, просто отправляем текст
-        await message.edit_text(review_text, reply_markup=keyboard)
+        # Если фото нет, пробуем редактировать текст
+        try:
+            await message.edit_text(review_text, reply_markup=keyboard)
+        except Exception:
+            # Если не удалось (например, предыдущее было с фото), удаляем и отправляем новое
+            await message.delete()
+            await bot.send_message(
+                chat_id=message.chat.id,
+                text=review_text,
+                reply_markup=keyboard
+            )
 
 @dp.callback_query(lambda c: c.data.startswith("review_"))
 async def navigate_reviews(callback_query: types.CallbackQuery):
